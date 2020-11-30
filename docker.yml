@@ -1,0 +1,77 @@
+- hosts: all
+  tasks:
+  - file:
+      state: directory
+      path: "/dvd"
+  
+  - mount:
+      src: "/dev/cdrom"
+      path: "/dvd"
+      state: mounted
+      fstype: "iso9660"
+
+  - yum_repository:
+      baseurl: "/dvd/AppStream"
+      name: "AppStream"
+      description: "yum dvd for AppStream"
+      gpgcheck: no
+ 
+  
+  - yum_repository:
+      baseurl: "/dvd/BaseOS"
+      name: "BaseOS"
+      description: "yum dvd for BaseOS"
+      gpgcheck: no     
+  
+  - yum_repository:
+      baseurl: "https://download.docker.com/linux/centos/8/x86_64/stable/"
+      name: "docker"
+      description: "yum repo for docker"
+      gpgcheck: no
+
+
+  - name: "install docker-ce"
+    command: dnf install --nobest docker-ce -y
+
+
+  - name: Start Docker service
+    service:
+       name: docker
+       state: started
+       enabled: yes
+    become: yes
+
+  - package:
+          name: python3
+          state: present   
+  - pip:
+       name: "docker"
+       state: present
+
+
+  - pip:
+       name: "urllib3"
+       state: present     
+
+  - name: pull an image
+    docker_image:
+       name: httpd
+       source: pull
+
+  - name: creating a httpd container
+    docker_container:
+       name: myhttpd
+       image: httpd
+       state: present
+       published_ports:
+       - "81:80"      
+       volumes: /var/www/html:/usr/local/apache2/htdocs/
+
+  - copy:
+       src: "/root/index.html"
+       dest: "/var/www/html/"   
+
+
+  - docker_container:
+       name: "myhttpd"    
+       state: started     
